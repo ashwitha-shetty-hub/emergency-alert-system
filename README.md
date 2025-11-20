@@ -179,7 +179,7 @@ All architecture (Kafka flow, ERD, sequence diagrams) will be added in the **doc
 
 | Name                | Role           |
 | ------------------- | -------------- |
-| **Ashwitha Shetty** | Lead Developer |
+| **Ashwitha Shetty** | Developer |
 | **Yash**            | Developer      |
 
 ---
