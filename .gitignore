@@ -90,5 +90,5 @@ __pycache__/
 desktop.ini
 
 
-# Ignore Word temporary lock files
+#lock temp files
 ~$*
