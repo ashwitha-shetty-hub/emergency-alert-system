@@ -1,2 +1,119 @@
-#Hello this is TableScripts
-# This is Yash
+---TableScripts
+-- run in Query Tool (connected to emergency_alert db)
+--day1-database
+-- 1) simple lookup tables
+CREATE TABLE IF NOT EXISTS lk_notification_channel (
+  id SERIAL PRIMARY KEY,
+  code TEXT UNIQUE NOT NULL,  -- 'PUSH','SMS','EMAIL'
+  name TEXT NOT NULL
+);
+
+INSERT INTO lk_notification_channel (code,name)
+  VALUES ('PUSH','Push Notification'),('SMS','SMS'),('EMAIL','Email')
+ON CONFLICT DO NOTHING;
+
+
+-- 2) users table with PostGIS geom
+
+CREATE TABLE IF NOT EXISTS users (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  phone_number VARCHAR(20) UNIQUE,
+  email VARCHAR(255) UNIQUE,
+  name VARCHAR(150),
+  password_hash TEXT,
+  is_phone_verified BOOLEAN DEFAULT FALSE,
+  is_email_verified BOOLEAN DEFAULT FALSE,
+  is_active BOOLEAN DEFAULT TRUE,
+  locale VARCHAR(10),
+  geom geometry(Point,4326),   -- PostGIS point
+  last_location_at TIMESTAMP WITH TIME ZONE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+);
+
+INSERT INTO users (
+    phone_number, email, name, password_hash,
+    is_phone_verified, is_email_verified,
+    geom, last_location_at
+) VALUES (
+    '+919876543210', 'user1@gmail.com', 'Ramesh Kumar',
+    crypt('password123', gen_salt('bf')),
+    TRUE, TRUE,
+    ST_SetSRID(ST_MakePoint(77.5946, 12.9716), 4326),  -- Bangalore
+    now()
+);
+INSERT INTO users (
+    phone_number, email, name, password_hash,
+    is_phone_verified,
+    geom, last_location_at
+) VALUES (
+    '+919812345678', 'user2@gmail.com', 'Sanya Rao',
+    crypt('hello123', gen_salt('bf')),
+    TRUE,
+    ST_SetSRID(ST_MakePoint(72.8777, 19.0760), 4326),  -- Mumbai
+    now()
+);
+INSERT INTO users (
+    phone_number, email, name, password_hash
+) VALUES (
+    '+917894561234', 'user3@gmail.com', 'Test User',
+    crypt('test123', gen_salt('bf'))
+);
+INSERT INTO users (
+    phone_number, email, name, password_hash, is_phone_verified,
+    geom, last_location_at
+) VALUES (
+    '+919955443322', 'responder1@ems.com', 'Responder Team A',
+    crypt('respass', gen_salt('bf')),
+    TRUE,
+    ST_SetSRID(ST_MakePoint(80.2707, 13.0827), 4326), -- Chennai
+    now()
+);
+---------------------------
+-- index for spatial queries
+CREATE INDEX IF NOT EXISTS idx_users_geom_gist ON users USING GIST (geom);
+
+-- 3) alerts (incident)
+CREATE TABLE IF NOT EXISTS alerts (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  created_by UUID REFERENCES users(id) ON DELETE SET NULL,
+  title VARCHAR(250),
+  description TEXT,
+  incident_geom geometry(Point,4326),
+  incident_lat DOUBLE PRECISION,
+  incident_lng DOUBLE PRECISION,
+  radius_meters INTEGER DEFAULT 5000,
+  status TEXT DEFAULT 'ACTIVE',
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+);
+
+
+SELECT id FROM users LIMIT 1;
+
+
+INSERT INTO alerts (
+  created_by,
+  title,
+  description,
+  incident_geom,
+  incident_lat,
+  incident_lng,
+  radius_meters
+)
+VALUES (
+  'c0ebc036-a56f-4d81-ad94-869ee43b77cd',
+  'Fire Accident',
+  'Small fire near electrical shop',
+  ST_SetSRID(ST_MakePoint(77.5946, 12.9716), 4326),
+  12.9716,
+  77.5946,
+  3000
+);
+
+UPDATE alerts
+SET status = 'RESOLVED'
+WHERE id = 'c0ebc036-a56f-4d81-ad94-869ee43b77cd';
+
+
+
+
